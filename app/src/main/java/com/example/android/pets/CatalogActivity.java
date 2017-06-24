@@ -15,18 +15,29 @@
  */
 package com.example.android.pets;
 
+import android.content.ContentValues;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
+
+import com.example.android.pets.data.PetContract;
+import com.example.android.pets.data.PetContract.PetEntry;
+import com.example.android.pets.data.PetDbHelper;
 
 /**
  * Displays list of pets that were entered and stored in the app.
  */
 public class CatalogActivity extends AppCompatActivity {
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +56,81 @@ public class CatalogActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        displayDatabaseInfo();
+    }
+
+    /**
+     * Helper method to insert hardcoded pet data into the database. For debugging purposes only.
+     */
+    private void insertPet() {
+        // Create a ContentValues object where column names are the keys,
+        // and Toto's pet attributes are the values.
+        ContentValues values = new ContentValues();
+        values.put(PetEntry.COLUMN_NAME, "Toto");
+        values.put(PetEntry.COLUMN_BREED, "Terrier");
+        values.put(PetEntry.COLUMN_GENDER, PetEntry.GENDER_MALE);
+        values.put(PetEntry.COLUMN_WEIGHT, 7);
+
+        // Insert a new row for Toto into the provider using the ContentResolver.
+        // Use the {@link PetEntry#CONTENT_URI} to indicate that we want to insert
+        // into the pets database table.
+        // Receive the new content URI that will allow us to access Toto's data in the future.
+        Uri newUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
+    }
+
+    /**
+     * Temporary helper method to display information in the onscreen TextView about the state of
+     * the pets database.
+     */
+    private void displayDatabaseInfo() {
+        // To access our database, we instantiate our subclass of SQLiteOpenHelper
+        // and pass the context, which is the current activity.
+//        PetDbHelper mDbHelper = new PetDbHelper(this);
+
+        // Create and/or open a database to read from it
+//        SQLiteDatabase db = mDbHelper.getReadableDatabase();
+
+        String[] projection = {PetEntry._ID, PetEntry.COLUMN_NAME,
+                PetEntry.COLUMN_BREED, PetEntry.COLUMN_GENDER, PetEntry.COLUMN_WEIGHT };
+//        String selection = PetEntry.COLUMN_PET_GENDER + “=?”;
+//        String selectionArgs = new String[] { PetEntry.GENDER_FEMALE };
+
+//        Cursor cursor = db.query(PetEntry.TABLE_NAME, projection,
+//                null, null,
+//                null, null, null);
+        Cursor cursor = getContentResolver().query(PetEntry.CONTENT_URI, projection, null, null, null);
+
+        try {
+            // Display the number of rows in the Cursor (which reflects the number of rows in the
+            // pets table in the database).
+            TextView displayView = (TextView) findViewById(R.id.text_view_pet);
+            displayView.setText("Number of rows in pets database table: " + cursor.getCount() + " pets.\n\n");
+            displayView.append(PetEntry._ID + " - " + PetEntry.COLUMN_NAME + " - " + PetEntry.COLUMN_BREED + " - " + PetEntry.COLUMN_GENDER + " - " + PetEntry.COLUMN_WEIGHT + "\n");
+
+            int idColumnIndex = cursor.getColumnIndex(PetEntry._ID);
+            int nameColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_NAME);
+            int breedColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_BREED);
+            int genderColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_GENDER);
+            int weightColumnIndex = cursor.getColumnIndex(PetEntry.COLUMN_WEIGHT);
+
+            while(cursor.moveToNext()) {
+                int currentID = cursor.getInt(idColumnIndex);
+                String currentName = cursor.getString(nameColumnIndex);
+                String currentBreed = cursor.getString(breedColumnIndex);
+                int currentGender = cursor.getInt(genderColumnIndex);
+                int currentWeight = cursor.getInt(weightColumnIndex);
+                displayView.append("\n" + currentID + " - " + currentName + " - " + currentBreed + " - " + currentGender + " - " + currentWeight);
+            }
+        } finally {
+            // Always close the cursor when you're done reading from it. This releases all its
+            // resources and makes it invalid.
+            cursor.close();
+        }
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu options from the res/menu/menu_catalog.xml file.
         // This adds menu items to the app bar.
@@ -58,7 +144,8 @@ public class CatalogActivity extends AppCompatActivity {
         switch (item.getItemId()) {
             // Respond to a click on the "Insert dummy data" menu option
             case R.id.action_insert_dummy_data:
-                // Do nothing for now
+                insertPet();
+                displayDatabaseInfo();
                 return true;
             // Respond to a click on the "Delete all entries" menu option
             case R.id.action_delete_all_entries:
